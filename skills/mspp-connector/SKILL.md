@@ -9,7 +9,8 @@ description: >
   use x-ms-dynamic-schema, add dynamic properties to a connector, write
   script.csx, connect to a SOAP API from Power Automate, add a webhook trigger
   to a connector, or mentions paconn, apiDefinition.swagger.json,
-  apiProperties.json, or Power Automate custom connectors.
+  apiProperties.json, or Power Automate custom connectors, use x-ms-trigger,
+  Power Apps custom connector, or add connection parameters.
 ---
 
 # Microsoft Power Platform Custom Connector Builder
@@ -61,7 +62,7 @@ Follow these steps in order when creating or updating a connector.
 | `operationId` | Unique across the connector; PascalCase; alphanumeric characters only — no spaces, hyphens, or underscores. Example: `GetItemById` |
 | `summary` | Sentence case; 120 characters or fewer; no trailing period. Example: `Get item by identifier` |
 | `description` | Full sentence with a trailing period. Example: `Returns a single item matching the provided identifier.` |
-| `x-ms-visibility` | `"important"` for primary, frequently used operations; `"advanced"` for secondary or rarely used operations |
+| `x-ms-visibility` | `"important"` for primary, frequently used operations; `"advanced"` for secondary or rarely used operations; `"internal"` for platform-managed operations (e.g., webhook deregistration) that should not appear in the designer |
 
 ### Parameters and Response Properties
 
@@ -114,6 +115,8 @@ routing to different endpoints, or URL rewriting?
               └── Use x-ms-dynamic-schema or x-ms-dynamic-properties
                   (see references/dynamic-patterns.md)
 ```
+
+**Note:** Authentication and connection parameter configuration are not shown in this tree. Configure auth types (OAuth 2.0, API key, Basic) and connection parameters in `apiProperties.json`. For multi-instance connectors (different tenant URLs), use `connectionParameterSets`. See `references/swagger-support.md` for the `connectionParameterSets` pattern.
 
 ---
 
@@ -171,14 +174,25 @@ Power Platform supports push triggers backed by a webhook registration model. Im
     ],
     "responses": {
       "201": {
-        "description": "Webhook registered successfully."
+        "description": "Webhook registered successfully.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "x-ms-summary": "Webhook Identifier",
+              "description": "The identifier of the registered webhook."
+            }
+          }
+        }
       }
     }
-  },
+  }
+},
+"/webhooks/{id}": {
   "delete": {
     "operationId": "UnregisterWebhook",
     "summary": "Unregister a webhook",
-    "description": "Removes a previously registered callback URL.",
     "x-ms-visibility": "internal",
     "parameters": [
       {
@@ -187,13 +201,13 @@ Power Platform supports push triggers backed by a webhook registration model. Im
         "required": true,
         "type": "string",
         "x-ms-summary": "Webhook Identifier",
-        "description": "The identifier of the webhook registration to remove."
+        "x-ms-visibility": "internal",
+        "description": "The identifier of the webhook registration to delete."
       }
     ],
     "responses": {
-      "200": {
-        "description": "Webhook unregistered successfully."
-      }
+      "200": { "description": "Webhook unregistered successfully." },
+      "default": { "description": "Operation failed." }
     }
   }
 }
