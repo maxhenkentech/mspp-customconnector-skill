@@ -209,6 +209,62 @@ Use these values in `consumes` and `produces`:
 | Empty response schemas not allowed | A schema that is present but has no type or properties is not valid, except for dynamic responses |
 | Dynamic responses | Use `x-ms-dynamic-schema` or `x-ms-dynamic-properties` on the response schema object when the shape varies at runtime |
 
+### Define All Expected Status Codes
+
+Do not limit responses to `200` and `default`. Define every status code the API documentation says the endpoint can return. This helps Power Automate surface accurate error handling to flow authors and prevents unexpected `default` branch routing.
+
+**Common status codes by operation type:**
+
+| Code | Meaning | Typical operations |
+|------|---------|-------------------|
+| `200` | OK | GET, PUT, PATCH, DELETE with body |
+| `201` | Created | POST that creates a resource |
+| `204` | No Content | DELETE, PUT/PATCH with no response body |
+| `400` | Bad Request | Any — invalid input, missing required fields |
+| `401` | Unauthorized | Any — auth token missing or expired |
+| `403` | Forbidden | Any — valid auth but insufficient permissions |
+| `404` | Not Found | GET/PUT/DELETE by ID |
+| `409` | Conflict | POST/PUT — resource already exists or version conflict |
+| `422` | Unprocessable Entity | POST/PUT — semantic validation failure |
+| `429` | Too Many Requests | Any — rate limit hit |
+| `500` | Internal Server Error | Any — unexpected server-side failure |
+
+**Example — GET by ID with full response coverage:**
+
+```json
+"responses": {
+  "200": {
+    "description": "Item retrieved successfully.",
+    "schema": {
+      "$ref": "#/definitions/Item"
+    }
+  },
+  "400": {
+    "description": "The request is invalid. Check the parameter values."
+  },
+  "401": {
+    "description": "Authentication failed. Reconnect the connection."
+  },
+  "403": {
+    "description": "Access denied. You do not have permission to read this item."
+  },
+  "404": {
+    "description": "Item not found. The identifier does not match any existing item."
+  },
+  "429": {
+    "description": "Rate limit exceeded. Retry after the period specified in the Retry-After header."
+  },
+  "500": {
+    "description": "An unexpected server error occurred."
+  },
+  "default": {
+    "description": "Operation failed."
+  }
+}
+```
+
+**Note:** Error response bodies (`4xx`, `5xx`) should not include a `schema` unless the API returns a consistent, structured error object. If the API does return a structured error body, define an `ErrorResponse` definition and reference it.
+
 ---
 
 ## Reserved Parameter Names

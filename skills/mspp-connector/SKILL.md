@@ -23,6 +23,27 @@ Every connector is a folder containing up to five files. Only the first two are 
 
 ---
 
+## Requirements Intake
+
+Before writing any files, ask the user these questions. Each answer directly shapes the connector.
+
+**1. Connector identity**
+Ask for: display name, a one-sentence description, and the publisher/author name. These populate `info.title`, `info.description`, and `info.contact` in the swagger and the connector branding in `apiProperties.json`.
+
+**2. API reference material**
+Ask: "Do you have a swagger file, OpenAPI spec, Postman collection, website documentation, or any other API reference I can use?" Import or read whatever is provided before writing any operations. Good API docs mean accurate `description` fields, correct parameter names, and realistic response schemas.
+
+**3. Authentication method**
+Ask: "How does this API authenticate?" Present the options: No auth, API Key (header or query), Basic (username + password), OAuth 2.0 (Authorization Code or Client Credentials), Windows. See `references/auth-patterns.md` for the complete implementation pattern for each type. For OAuth 2.0, also collect: authorization URL, token URL, scopes, and client ID. The client secret is never stored in any file — it is passed to `paconn create/update` via `--secret` at deploy time.
+
+**4. Multiple environments**
+Ask: "Does this API have more than one environment, such as a sandbox/demo and a production environment with different base URLs?" If YES, use `connectionParameterSets` in `apiProperties.json` so the maker selects the environment at connection time, and pair it with the `dynamichosturl` policy template. See `references/auth-patterns.md` for the multi-environment OAuth pattern and `references/swagger-support.md` for the full `connectionParameterSets` example.
+
+**5. Operations to implement**
+Ask: "Which API operations do you want to expose in this connector?" Let the user describe their use cases — this determines which endpoints to include and which to skip.
+
+---
+
 ## Core Authoring Workflow
 
 Follow these steps in order when creating or updating a connector.
@@ -35,11 +56,13 @@ Follow these steps in order when creating or updating a connector.
 
 4. **Add policy templates where possible instead of custom code.** Route-rewriting, header injection, query-string manipulation, CORS handling, and many payload transformations are available as declarative policy templates configured in `apiProperties.json` under `policyTemplateInstances`. Reach for `script.csx` only after confirming no policy template covers the requirement. See `references/policy-templates.md` for all ten templateIds with their parameters and complete JSON examples.
 
-5. **Configure authentication and branding in `apiProperties.json`.** Set the `connectionParameters` block for the chosen auth type (API Key, OAuth 2.0, Basic, Windows, etc.). Fill in `iconBrandColor` with a hex color that matches the service's brand. Reference `icon.png` in `iconUrl` if one exists. List any operations that invoke custom code in the `scriptOperations` array — operations omitted from this array will not execute `script.csx` even if the file is present.
+5. **Configure authentication and branding in `apiProperties.json`.** Use the auth type chosen during the Requirements Intake. See `references/auth-patterns.md` for the complete `connectionParameters` or `connectionParameterSets` JSON for every supported auth type. Fill in `iconBrandColor` with a hex color matching the service's brand. Reference `icon.png` in `iconUrl` if one exists. List any operations that invoke custom code in the `scriptOperations` array — operations omitted from this array will not execute `script.csx` even if the file is present.
 
 6. **Validate.** Run `paconn validate` against the connector folder before every deployment. Fix every reported error and warning before proceeding. Validation checks operationId uniqueness, required field presence, x-ms extension correctness, and schema integrity. A clean validation pass is mandatory.
 
-7. **Deploy.** Use `paconn create` for a brand-new connector or `paconn update` for an existing one. Pass `--api-def`, `--api-prop`, and `--icon` explicitly or rely on a `settings.json` file in the connector folder. For detailed CLI flags and the guided interactive workflow see `references/paconn-guide.md`.
+7. **Deploy.** Use `paconn create` for a brand-new connector or `paconn update` for an existing one. For OAuth 2.0 connectors, the `--secret` flag (`-r`) is required — pass the client secret on the command line; it is never stored in any file. Use `-s settings.json` to avoid repeating all other flags. For detailed CLI flags and the guided interactive workflow see `references/paconn-guide.md`.
+
+8. **Offer deployment.** After the connector files are complete and validated, always ask: "Would you like me to deploy this connector now? I can run `paconn create` (new connector) or `paconn update` (existing connector) for you." Collect the environment GUID and — for OAuth 2.0 — the client secret, then run the deploy command. Save the returned connector ID into `settings.json` after first deployment.
 
 ---
 
@@ -64,7 +87,8 @@ Follow these steps in order when creating or updating a connector.
 
 ### Schema Definitions
 
-- Every `$ref` must resolve to a named definition under `#/definitions/`. Inline anonymous schemas nested in operation responses are permitted but make reuse harder — prefer `$ref` for any schema used by more than one operation.
+- **Use `$ref` for every named schema.** Any object schema in a request body, response body, or parameter that has two or more properties should be defined under `#/definitions/` and referenced with `$ref`. Do not inline anonymous object schemas in operation definitions — inline only for trivial single-property objects. Using `$ref` consistently makes the designer surface property-level dynamic content tokens and enables reuse across operations.
+- **Exception — do NOT use `$ref` inside `x-ms-dynamic-properties` or `x-ms-dynamic-schema` inline schemas.** The platform does not resolve `$ref` pointers within dynamically returned schemas. Inline all properties directly in the schema object returned by a dynamic schema operation or script.
 - Every array-type property must include an `items` schema. An array without `items` will fail validation and produce an unusable output in the designer.
 - List required fields explicitly in a `required` array at the object schema level — do not rely on implicit required behavior. The `required` array must contain only field names that actually exist as keys in `properties`.
 - Avoid `additionalProperties: true` on request body schemas. Power Platform ignores extra fields silently, but an open schema makes the designer unable to show individual properties to the maker.
@@ -238,9 +262,10 @@ Load these files on demand when the task requires their specific content. Do not
 
 | File | When to load |
 |------|-------------|
-| `references/paconn-guide.md` | CLI commands, deployment flags, settings.json schema, guided paconn experience |
+| `references/auth-patterns.md` | Authentication type selection and full JSON examples for every auth type including OAuth 2.0, API key, Basic, Windows, and multi-environment connectionParameterSets |
+| `references/paconn-guide.md` | CLI commands, deployment flags, --secret for OAuth 2.0, settings.json schema, guided paconn experience |
 | `references/policy-templates.md` | All ten policy template templateIds, parameters, and JSON examples |
 | `references/x-ms-extensions.md` | Full catalog of supported x-ms-* extensions with syntax and examples |
 | `references/dynamic-patterns.md` | x-ms-dynamic-values, x-ms-dynamic-list, x-ms-dynamic-schema, x-ms-dynamic-properties |
-| `references/swagger-support.md` | Supported vs unsupported Swagger 2.0 properties for Power Platform |
-| `references/script-csx.md` | When and how to use script.csx, ScriptBase API, SOAP and XML patterns |
+| `references/swagger-support.md` | Supported vs unsupported Swagger 2.0 properties, connectionParameterSets pattern |
+| `references/script-csx.md` | When and how to use script.csx, ScriptBase API, SOAP, dynamic schema, and other patterns |

@@ -59,6 +59,18 @@
     "Newtonsoft",
     "Linq",
     "securestring",
-    "USERPROFILE"
+    "USERPROFILE",
+    "oauthSetting",
+    "oAuthSettings",
+    "redirectMode",
+    "identityProvider",
+    "authorizationUrl",
+    "tokenUrl",
+    "refreshUrl",
+    "grantType",
+    "IsFirstParty",
+    "IsOnbehalfofLoginSupported",
+    "customParameters",
+    "PKCE"
   ]
 }
