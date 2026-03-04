@@ -8,12 +8,16 @@ Source: https://learn.microsoft.com/en-us/connectors/custom-connectors/write-cod
 
 ## When to Use
 
-Use `script.csx` only when one of the following conditions applies:
+`script.csx` gives full C# control over every request and response in the connector pipeline. Use it whenever policy templates are insufficient for the requirement. Common scenarios include:
 
-1. **SOAP/XML APIs** — The backend requires a SOAP envelope or XML request/response that policy templates cannot construct or parse.
-2. **Complex conditional transformation** — The request or response transform requires branching logic that no combination of policy templates can express.
-3. **Dynamic schema from a non-OpenAPI endpoint** — The API has a metadata or schema endpoint that does not return an OpenAPI-compatible schema. Use `script.csx` to call that endpoint, parse the response, and append a `schema` property in a format that `x-ms-dynamic-schema` can consume. This enables Power Automate to show dynamic fields in the flow designer without a native schema endpoint. See the pattern below.
-4. **Secondary HTTP calls beyond `setvaluefromurl`** — The secondary call requires parsing, conditional logic, or chaining that `setvaluefromurl` cannot handle.
+- **SOAP/XML APIs** — Construct SOAP envelopes, parse XML responses, and return JSON to Power Automate.
+- **Dynamic schema from a non-OpenAPI endpoint** — Call a proprietary metadata endpoint, map the field list to JSON Schema, and return it under a `schema` key for `x-ms-dynamic-schema` to consume. This is one of the strongest use cases for the script.
+- **Complex conditional transformation** — Branching logic on request or response content that no policy template combination can express.
+- **Response reshaping** — Restructure, filter, or enrich responses beyond what `setproperty`, `convertarraytoobject`, or `stringtoarray` support.
+- **Multi-step orchestration** — Chain multiple backend calls, aggregate results, and return a unified response.
+- **Secondary HTTP calls with logic** — When `setvaluefromurl` is insufficient because the secondary call requires parsing, conditional branching, or chaining.
+
+There is no closed list of valid use cases. If policy templates cannot solve it and the requirement falls within the platform constraints below, `script.csx` is the appropriate tool.
 
 ---
 
