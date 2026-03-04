@@ -95,41 +95,27 @@ The skill positions `script.csx` as a last resort and works through a checklist 
 
 ## Installation
 
-### macOS
+### macOS / Linux
 
 ```bash
-# 1. Install the paconn CLI (required to deploy connectors)
-pip install paconn
-
-# 2. Create the Claude Code plugins directory if it does not exist
-mkdir -p ~/.claude/plugins
-
-# 3. Clone this repository into the plugins directory
-git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git \
-  ~/.claude/plugins/mspp-custom-connector-builder
-
-# 4. Restart Claude Code — the skill loads automatically
+git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git /tmp/mspp-skill && \
+mkdir -p ~/.claude/plugins && \
+cp -r /tmp/mspp-skill ~/.claude/plugins/mspp-custom-connector-builder && \
+rm -rf /tmp/mspp-skill
 ```
 
-### Windows
-
-Open **PowerShell** (or Windows Terminal):
+### Windows (PowerShell)
 
 ```powershell
-# 1. Install the paconn CLI (required to deploy connectors)
-pip install paconn
-
-# 2. Create the Claude Code plugins directory if it does not exist
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\plugins"
-
-# 3. Clone this repository into the plugins directory
-git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git `
-  "$env:USERPROFILE\.claude\plugins\mspp-custom-connector-builder"
-
-# 4. Restart Claude Code — the skill loads automatically
+git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git "$env:TEMP\mspp-skill"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\plugins" | Out-Null
+Copy-Item -Recurse "$env:TEMP\mspp-skill" "$env:USERPROFILE\.claude\plugins\mspp-custom-connector-builder"
+Remove-Item -Recurse -Force "$env:TEMP\mspp-skill"
 ```
 
-> **No manual configuration required.** Claude Code discovers the plugin automatically from the `plugins` directory.
+Restart Claude Code after installation — the plugin is discovered automatically.
+
+> **paconn CLI** is required to validate and deploy connectors: `pip install paconn`
 
 ---
 

@@ -58,6 +58,7 @@
     "x-ms",
     "Newtonsoft",
     "Linq",
-    "securestring"
+    "securestring",
+    "USERPROFILE"
   ]
 }
