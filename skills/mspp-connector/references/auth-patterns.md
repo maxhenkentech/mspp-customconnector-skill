@@ -14,7 +14,7 @@ Ask the API owner or check the API documentation to determine the correct type. 
 | API Key | APIs that accept a single key in a header or query parameter |
 | Basic | APIs that use HTTP Basic auth (username + password) |
 | OAuth 2.0 — Authorization Code | APIs where the user grants delegated access interactively (most common for SaaS) |
-| OAuth 2.0 — Client Credentials | Service-to-service APIs where there is no interactive user sign-in |
+| OAuth 2.0 — Client Credentials | **Not supported** by the connector platform. See Pattern 6 for workarounds. |
 | Windows | On-premises APIs behind Windows Authentication (requires on-premises data gateway) |
 
 ---
@@ -245,71 +245,29 @@ paconn update -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
 **Important notes:**
 
 - `clientId` is safe to commit to source control. `clientSecret` is NOT — it is never written to any file.
-- `redirectUrl` must be registered in your OAuth application as an allowed redirect URI. Use exactly `https://global.consent.azure-apim.net/redirect`.
+- **The redirect URL is connector-specific — you cannot know it before the connector is first saved.** The workflow is:
+  1. Deploy the connector with `paconn create` (or save it in the Power Platform portal).
+  2. Open the connector in the portal, go to the **Security** tab, and copy the exact **Redirect URL** shown there. It has the form `https://global.consent.azure-apim.net/redirect/<connector-unique-id>`.
+  3. Register that exact URL in your OAuth application's allowed redirect URIs.
+  4. Registering only `https://global.consent.azure-apim.net/redirect` (without the connector-specific suffix) will cause an `AADSTS50011` redirect URI mismatch error at login time.
+  The `redirectUrl` in `apiProperties.json` can be left as the base domain initially; the platform fills in the correct suffix at runtime. The registration in your OAuth app is what must be exact.
 - If the provider requires PKCE or additional parameters in the authorization request, add them under `customParameters`.
 
 ---
 
 ## Pattern 6: OAuth 2.0 — Client Credentials
 
-Use when the connector authenticates as an application (service account), not as a specific user. There is no interactive login — the client ID and secret are exchanged directly for an access token.
+> **Not supported.** Microsoft explicitly states in two separate current documentation pages (last updated 2025–2026): *"Client credentials grant type is not supported by custom connectors."*
 
-**apiProperties.json:**
+**Why:** The Power Platform connector platform depends on refresh tokens to maintain long-lived connections without requiring users to re-authenticate. The client credentials grant does not issue refresh tokens, making it architecturally incompatible with the connection credential store.
 
-```json
-{
-  "properties": {
-    "connectionParameters": {
-      "token": {
-        "type": "oauthSetting",
-        "oAuthSettings": {
-          "identityProvider": "oauth2",
-          "clientId": "YOUR_CLIENT_ID",
-          "scopes": [],
-          "redirectMode": "Global",
-          "redirectUrl": "https://global.consent.azure-apim.net/redirect",
-          "properties": {
-            "IsFirstParty": "False",
-            "IsOnbehalfofLoginSupported": false
-          },
-          "customParameters": {
-            "tokenUrl": {
-              "value": "https://api.example.com/oauth/token"
-            },
-            "refreshUrl": {
-              "value": "https://api.example.com/oauth/token"
-            },
-            "grantType": {
-              "value": "client_credentials"
-            }
-          }
-        },
-        "uiDefinition": {
-          "displayName": "Connect to Example Service",
-          "description": "Connect using your application credentials.",
-          "constraints": {
-            "required": "true"
-          }
-        }
-      }
-    }
-  }
-}
-```
+**Workarounds if the API requires service-to-service auth:**
 
-**Deploying with paconn:** Same as Authorization Code — `--secret` is required. On first deployment pass all file paths explicitly; use `settings.json` for subsequent updates.
+1. **HTTP action in the flow** — Use the built-in HTTP action in Power Automate to request a token directly from the OAuth token endpoint, then pass the `Bearer` token as a header to subsequent HTTP calls. This bypasses the custom connector entirely but works reliably.
+2. **API Key pattern** — If the API supports long-lived API keys or service tokens (not short-lived OAuth tokens), use Pattern 2 (API Key) instead and store the pre-acquired token as a `securestring` connection parameter.
+3. **Dataverse custom API / plug-in** — For Dataverse-connected workloads, implement the service-to-service token acquisition in a server-side Dataverse plug-in, which runs in the Azure tenant and can acquire client credentials tokens natively.
 
-```bash
-# First deployment
-paconn create \
-  --api-def apiDefinition.swagger.json \
-  --api-prop apiProperties.json \
-  --icon icon.png \
-  --secret YOUR_OAUTH_CLIENT_SECRET
-
-# Subsequent updates
-paconn update -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
-```
+If the API truly requires client credentials OAuth and none of the above alternatives are viable, raise this with the API owner — the connector platform constraint is unlikely to change in the near term (the feature request has been open since August 2022 with no committed timeline from Microsoft).
 
 ---
 
