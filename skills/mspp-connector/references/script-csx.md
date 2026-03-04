@@ -29,16 +29,45 @@ If all four answers are NO, `script.csx` is appropriate.
 
 ---
 
-## Constraints
+## Constraints and Restrictions
+
+### Hard Limits
 
 | Constraint | Value |
 |-----------|-------|
 | Max execution time | 2 minutes |
 | Max file size | 1 MB |
-| Script files per connector | 1 |
+| Script files per connector | 1 (one `script.csx` per connector) |
 | Runtime | .NET Standard 2.0 |
-| On-premises gateway | Not supported |
-| `HttpClient` (direct) | Deprecated — use `Context.SendAsync` |
+| On-premises data gateway | Not supported |
+| `HttpClient` (direct creation) | Currently allowed but **will be blocked** in a future release — use `Context.SendAsync` exclusively |
+| Logging / tracing | No debug trace or logging output available to the developer (planned for a future release) |
+
+### Execution Timeout — Important Note
+
+The 2-minute execution timeout applies to **newly created connectors only**. Existing connectors created before the timeout was introduced will continue to run without a timeout limit until the connector is updated (i.e., saved with new content). After the first update, the 2-minute limit is enforced permanently. Plan accordingly before updating long-running connectors.
+
+### Virtual Network (VNet) Restriction
+
+In environments linked to a Virtual Network (VNet), `Context.SendAsync` routes requests through a **public endpoint only**. It **cannot reach private endpoints on the VNet**. This means `script.csx` cannot be used to call services that are only accessible from within the private network. If the backend API is behind a VNet and not publicly exposed, `script.csx` is not a viable solution.
+
+### HTTP Transport
+
+- Use `Context.SendAsync` to make all outbound HTTP calls. It inherits the connection parameters and platform-level security context.
+- Creating `HttpClient` instances directly is currently permitted but **will be blocked in a future platform update**. Migrate all direct `HttpClient` usage to `Context.SendAsync` before that change is released.
+- Do not use `HttpClientFactory` or other DI-based HTTP abstractions — they are not available in the script runtime.
+
+### Compilation and Deployment Errors
+
+Syntax errors or compilation failures in `script.csx` do not produce a friendly error message. The connector deployment (`paconn update`) may succeed, but at runtime the connector returns an **internal server error (HTTP 500)** with no descriptive detail. Test the script locally against a .NET Standard 2.0 target before deploying. If a runtime 500 error appears after deployment, the most common cause is a compilation failure in the script.
+
+### Cross-Region OperationId Encoding
+
+In certain regions or cross-region call paths, the `OperationId` passed to the script via `Context.OperationId` is **Base64-encoded** instead of plain text. Always use the `GetOperationId()` helper (see pattern below) to decode before comparison to avoid `default` case mismatches in the switch statement.
+
+### Supported Namespaces (Fixed Set)
+
+Only the namespaces listed in the Supported Namespaces section are available. NuGet package installation or custom assembly references are **not supported**. If a required library is not in the supported list, `script.csx` cannot be used for that requirement.
 
 ---
 
