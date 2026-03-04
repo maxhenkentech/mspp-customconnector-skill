@@ -1,16 +1,6 @@
 ---
 name: mspp-connector
-version: 0.1.0
-description: >
-  This skill should be used when the user asks to build a custom connector,
-  create a Power Platform connector, add a custom connector, update a custom
-  connector, deploy a connector with paconn, validate a swagger for Power
-  Platform, add policy templates to a connector, use x-ms-dynamic-values,
-  use x-ms-dynamic-schema, add dynamic properties to a connector, write
-  script.csx, connect to a SOAP API from Power Automate, add a webhook trigger
-  to a connector, or mentions paconn, apiDefinition.swagger.json,
-  apiProperties.json, or Power Automate custom connectors, use x-ms-trigger,
-  Power Apps custom connector, or add connection parameters.
+description: This skill should be used when the user asks to "build a custom connector", "create a Power Platform connector", "add a custom connector", "update a custom connector", "deploy a connector with paconn", "validate a swagger for Power Platform", "add policy templates to a connector", "use x-ms-dynamic-values", "use x-ms-dynamic-schema", "add dynamic properties to a connector", "write script.csx", "connect to a SOAP API from Power Automate", "add a webhook trigger to a connector", "use x-ms-trigger", "Power Apps custom connector", or "add connection parameters", or when they mention paconn, apiDefinition.swagger.json, apiProperties.json, or Power Automate custom connectors.
 ---
 
 # Microsoft Power Platform Custom Connector Builder
