@@ -99,8 +99,8 @@ The skill positions `script.csx` as a last resort and works through a checklist 
 
 ```bash
 git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git /tmp/mspp-skill && \
-mkdir -p ~/.claude/plugins && \
-cp -r /tmp/mspp-skill ~/.claude/plugins/mspp-custom-connector-builder && \
+mkdir -p ~/.claude/skills && \
+cp -r /tmp/mspp-skill/skills/mspp-connector ~/.claude/skills/mspp-connector && \
 rm -rf /tmp/mspp-skill
 ```
 
@@ -108,12 +108,12 @@ rm -rf /tmp/mspp-skill
 
 ```powershell
 git clone https://github.com/maxhenkentech/mspp-customconnector-skill.git "$env:TEMP\mspp-skill"
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\plugins" | Out-Null
-Copy-Item -Recurse "$env:TEMP\mspp-skill" "$env:USERPROFILE\.claude\plugins\mspp-custom-connector-builder"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null
+Copy-Item -Recurse "$env:TEMP\mspp-skill\skills\mspp-connector" "$env:USERPROFILE\.claude\skills\mspp-connector"
 Remove-Item -Recurse -Force "$env:TEMP\mspp-skill"
 ```
 
-Restart Claude Code after installation — the plugin is discovered automatically.
+Restart Claude Code after installation — the skill appears under **User skills** in `/claude skills`.
 
 > **paconn CLI** is required to validate and deploy connectors: `pip install paconn`
 
