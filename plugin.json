@@ -1,0 +1,8 @@
+{
+  "name": "mspp-custom-connector-builder",
+  "version": "0.1.0",
+  "description": "Skills and tools for building and maintaining Microsoft Power Platform custom connectors.",
+  "skills": [
+    "skills/mspp-connector"
+  ]
+}
