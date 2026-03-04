@@ -89,7 +89,11 @@ paconn download -s settings.json --dest ./connectors
 Creates a new custom connector. Prints the new connector ID on success. After creation, add the printed connector ID to `settings.json` under `connectorId`.
 
 ```bash
-paconn create --api-def apiDefinition.swagger.json --api-prop apiProperties.json
+# First deployment — settings.json does not exist yet, pass files explicitly
+paconn create --api-def apiDefinition.swagger.json --api-prop apiProperties.json --icon icon.png
+paconn create --api-def apiDefinition.swagger.json --api-prop apiProperties.json --script script.csx --secret YOUR_SECRET
+
+# Subsequent use — after settings.json contains connectorId
 paconn create -s settings.json
 paconn create -s settings.json --env 00000000-0000-0000-0000-000000000000
 ```
@@ -182,7 +186,7 @@ For a new connector (before creation), omit `connectorId`:
 
 ### Workflow A: New Connector
 
-Use when creating a connector for the first time.
+Use when creating a connector for the first time. `settings.json` does not exist yet — pass all file paths explicitly.
 
 ```bash
 # Step 1: Authenticate
@@ -191,20 +195,32 @@ paconn login
 # Step 2: Validate before creating
 paconn validate --api-def apiDefinition.swagger.json
 
-# Step 3: Create the connector
-paconn create -s settings.json
+# Step 3: Create the connector — pass each file explicitly
+# Omit --script if there is no script.csx
+# Omit --icon if there is no icon.png
+# For OAuth 2.0 connectors, --secret is required.
+# Pass --secret "dummy" if the secret is not yet known or is user-supplied.
+paconn create \
+  --api-def apiDefinition.swagger.json \
+  --api-prop apiProperties.json \
+  --script script.csx \
+  --icon icon.png \
+  --secret YOUR_OAUTH_CLIENT_SECRET
 
 # Step 4: Copy the printed connector ID into settings.json under "connectorId"
 # Example output: Connector ID: shared_myconnector-5fabc123
 ```
 
-After step 4, add the connector ID to `settings.json`:
+After step 4, create `settings.json` with the returned connector ID so all future updates use `-s settings.json`:
 
 ```json
 {
   "connectorId": "shared_myconnector-5fabc123",
   "environment": "00000000-0000-0000-0000-000000000000",
-  ...
+  "apiProperties": "apiProperties.json",
+  "apiDefinition": "apiDefinition.swagger.json",
+  "icon": "icon.png",
+  "script": "script.csx"
 }
 ```
 

@@ -60,7 +60,7 @@ Follow these steps in order when creating or updating a connector.
 
 6. **Validate.** Run `paconn validate` against the connector folder before every deployment. Fix every reported error and warning before proceeding. Validation checks operationId uniqueness, required field presence, x-ms extension correctness, and schema integrity. A clean validation pass is mandatory.
 
-7. **Deploy.** Use `paconn create` for a brand-new connector or `paconn update` for an existing one. For OAuth 2.0 connectors, the `--secret` flag (`-r`) is required — pass the client secret on the command line; it is never stored in any file. Use `-s settings.json` to avoid repeating all other flags. For detailed CLI flags and the guided interactive workflow see `references/paconn-guide.md`.
+7. **Deploy.** For a first deployment (no `settings.json` yet), use `paconn create` with explicit flags: `--api-def`, `--api-prop`, and optionally `--script` and `--icon`. For OAuth 2.0 connectors `--secret` is required; pass `"dummy"` if the secret is not yet known or will be user-supplied. After first deployment, add the returned connector ID to `settings.json` and use `paconn update -s settings.json` for all subsequent deploys. For detailed CLI flags and the guided interactive workflow see `references/paconn-guide.md`.
 
 8. **Offer deployment.** After the connector files are complete and validated, always ask: "Would you like me to deploy this connector now? I can run `paconn create` (new connector) or `paconn update` (existing connector) for you." Collect the environment GUID and — for OAuth 2.0 — the client secret, then run the deploy command. Save the returned connector ID into `settings.json` after first deployment.
 

@@ -224,11 +224,21 @@ The most common pattern for SaaS APIs. The maker is redirected to the provider's
 
 **Deploying with paconn:** The `--secret` flag (`-r`) is **required** to pass the OAuth client secret. Never store the secret in `apiProperties.json` or `settings.json`.
 
-```bash
-# Create
-paconn create -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
+On first deployment (no `settings.json` yet), pass all file paths explicitly:
 
-# Update
+```bash
+# First deployment — explicit flags required
+paconn create \
+  --api-def apiDefinition.swagger.json \
+  --api-prop apiProperties.json \
+  --icon icon.png \
+  --secret YOUR_OAUTH_CLIENT_SECRET
+
+# If there is no script.csx, omit --script.
+# If the secret is not yet fixed or will be provided by the user,
+# pass "dummy" as a placeholder: --secret "dummy"
+
+# Subsequent updates — use settings.json (after adding connectorId from first deploy)
 paconn update -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
 ```
 
@@ -287,10 +297,17 @@ Use when the connector authenticates as an application (service account), not as
 }
 ```
 
-**Deploying with paconn:** Same as Authorization Code — `--secret` is required.
+**Deploying with paconn:** Same as Authorization Code — `--secret` is required. On first deployment pass all file paths explicitly; use `settings.json` for subsequent updates.
 
 ```bash
-paconn create -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
+# First deployment
+paconn create \
+  --api-def apiDefinition.swagger.json \
+  --api-prop apiProperties.json \
+  --icon icon.png \
+  --secret YOUR_OAUTH_CLIENT_SECRET
+
+# Subsequent updates
 paconn update -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
 ```
 
@@ -468,4 +485,16 @@ When the API has multiple environments (e.g., sandbox and production) AND uses O
 
 > For multi-environment connectors, pair `connectionParameterSets` with the `dynamichosturl` policy template so the correct API host is applied per environment. The swagger `host` field remains a static placeholder but is overridden at runtime.
 
-**Deploying with paconn:** If any set uses OAuth 2.0, pass `--secret` matching the client secret for the environment being deployed to.
+**Deploying with paconn:** If any set uses OAuth 2.0, `--secret` is required. On first deployment pass all file paths explicitly:
+
+```bash
+# First deployment
+paconn create \
+  --api-def apiDefinition.swagger.json \
+  --api-prop apiProperties.json \
+  --icon icon.png \
+  --secret YOUR_OAUTH_CLIENT_SECRET
+
+# Subsequent updates
+paconn update -s settings.json --secret YOUR_OAUTH_CLIENT_SECRET
+```
