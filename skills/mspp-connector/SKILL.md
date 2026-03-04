@@ -130,7 +130,31 @@ routing to different endpoints, or URL rewriting?
                   (see references/dynamic-patterns.md)
 ```
 
-**Note:** Authentication and connection parameter configuration are not shown in this tree. Configure auth types (OAuth 2.0, API key, Basic) and connection parameters in `apiProperties.json`. For multi-instance connectors (different tenant URLs), use `connectionParameterSets`. See `references/swagger-support.md` for the `connectionParameterSets` pattern.
+**Note:** Authentication and connection parameter configuration are not shown in this tree.
+
+### Fake Path Pattern
+
+The swagger path an operation exposes to makers does not have to match the actual backend endpoint. Create a descriptive, semantically correct path in the swagger and use a policy template or `script.csx` to reroute the request to the real backend path at runtime. This is useful when:
+
+- **Two operations share the same backend endpoint but need different schemas.** For example, `POST /envelopes` behaves differently depending on whether the maker is creating from a template or from a document. Define two swagger paths (`POST /envelopes/fromTemplate` and `POST /envelopes/fromDocument`) and use the `routerequesttoendpoint` policy template on each to reroute both to the real `POST /envelopes` backend path.
+- **Versioning.** Expose `GET /items` in the swagger while routing to `/v2/items` on the backend without changing the connector's public interface.
+- **Complex conditional routing.** When the destination path or method depends on request content, use `script.csx` instead of the policy template — read the relevant field from the request body, construct the correct backend URL, and forward with `Context.SendAsync`.
+
+```json
+"policyTemplateInstances": [
+  {
+    "templateId": "routerequesttoendpoint",
+    "title": "Route fromTemplate to real envelopes endpoint",
+    "parameters": {
+      "x-ms-apimTemplateParameter.newPath": "/envelopes",
+      "x-ms-apimTemplateParameter.httpMethod": "POST",
+      "x-ms-apimTemplate-operationName": ["CreateEnvelopeFromTemplate"]
+    }
+  }
+]
+```
+
+The swagger `host` and `basePath` remain the same — only the path and HTTP method change. Configure auth types (OAuth 2.0, API key, Basic) and connection parameters in `apiProperties.json`. For multi-instance connectors (different tenant URLs), use `connectionParameterSets`. See `references/swagger-support.md` for the `connectionParameterSets` pattern.
 
 ---
 

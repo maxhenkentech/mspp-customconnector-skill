@@ -241,6 +241,54 @@ The value at `"schema"` is the JSON Schema object. The `value-path` or `itemValu
 
 ---
 
+## Enums and Multi-Select Arrays
+
+A static `enum` can be defined directly on a `string` parameter to give the maker a fixed dropdown without any API call:
+
+```json
+{
+  "name": "status",
+  "in": "query",
+  "type": "string",
+  "x-ms-summary": "Status",
+  "enum": ["active", "inactive", "pending"]
+}
+```
+
+If the API accepts **multiple selections** from a fixed list, the parameter becomes an `array` with the `enum` on the `items` string — not on the array itself:
+
+```json
+{
+  "name": "statuses",
+  "in": "query",
+  "type": "array",
+  "items": {
+    "type": "string",
+    "enum": ["active", "inactive", "pending"]
+  },
+  "collectionFormat": "csv",
+  "x-ms-summary": "Statuses"
+}
+```
+
+**Critical caveat:** When the parameter is `type: array`, Power Automate sends the value as an array (e.g., `["active", "pending"]`). Many APIs do not accept an array for what they treat as a single-value field — they expect a plain string. Verify the API actually supports multi-value for that parameter before using this pattern. If the API only accepts one value, keep the parameter as `type: string` with `enum` directly on it. Using the array form with a single-value API will result in a serialisation error or a `400 Bad Request` at runtime.
+
+---
+
+## When No Schema Endpoint Exists
+
+If the API has no endpoint that returns an OpenAPI-compatible schema, `x-ms-dynamic-schema` and `x-ms-dynamic-properties` can still be used — but only by creating an internal connector operation backed by `script.csx` that calls a proprietary metadata endpoint, transforms the response into a JSON Schema object, and returns it.
+
+This is viable but adds meaningful complexity:
+- A new internal operation must be defined in the swagger (`x-ms-visibility: "internal"`) solely to serve the schema.
+- The script must correctly map the API's field types to JSON Schema types and construct the full schema object with `properties`, `required`, and `x-ms-summary` on each field.
+- The operation must be listed in `scriptOperations` in `apiProperties.json`.
+- Errors in the schema construction surface as broken or empty field lists in the designer — debugging is non-trivial.
+
+Use this approach when the dynamic field set is genuinely needed and there is no alternative. See `references/script-csx.md` for the full pattern with a working implementation.
+
+---
+
 ## Common Mistakes
 
 | Mistake | Fix |
