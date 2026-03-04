@@ -8,11 +8,12 @@ Source: https://learn.microsoft.com/en-us/connectors/custom-connectors/write-cod
 
 ## When to Use
 
-Use `script.csx` only when ALL of these conditions are true:
+Use `script.csx` only when one of the following conditions applies:
 
-1. Policy templates cannot solve the requirement.
-2. The transformation requires conditional branching on request or response content, OR the API requires SOAP/XML envelopes.
-3. The logic exceeds what `setvaluefromurl` can handle for secondary HTTP calls.
+1. **SOAP/XML APIs** — The backend requires a SOAP envelope or XML request/response that policy templates cannot construct or parse.
+2. **Complex conditional transformation** — The request or response transform requires branching logic that no combination of policy templates can express.
+3. **Dynamic schema from a non-OpenAPI endpoint** — The API has a metadata or schema endpoint that does not return an OpenAPI-compatible schema. Use `script.csx` to call that endpoint, parse the response, and append a `schema` property in a format that `x-ms-dynamic-schema` can consume. This enables Power Automate to show dynamic fields in the flow designer without a native schema endpoint. See the pattern below.
+4. **Secondary HTTP calls beyond `setvaluefromurl`** — The secondary call requires parsing, conditional logic, or chaining that `setvaluefromurl` cannot handle.
 
 ---
 
@@ -24,8 +25,9 @@ Work through this list before creating a `script.csx` file. If any item can be a
 - [ ] Can `setproperty`, `convertarraytoobject`, or `convertobjecttoarray` handle the transform?
 - [ ] Can `routerequesttoendpoint` handle the routing?
 - [ ] Can `setvaluefromurl` handle the secondary API call?
+- [ ] Does the API expose a schema endpoint that returns an OpenAPI-compatible schema? If YES, use `x-ms-dynamic-schema` directly without a script.
 
-If all four answers are NO, `script.csx` is appropriate.
+If all five answers are NO, `script.csx` is appropriate.
 
 ---
 
@@ -199,6 +201,213 @@ private async Task<HttpResponseMessage> HandleGetItem()
     return response;
 }
 ```
+
+---
+
+## Pattern: Dynamic Schema from a Non-OpenAPI Metadata Endpoint
+
+Use this pattern when the API has a metadata or field-description endpoint that returns schema information in a proprietary format (not OpenAPI). The script calls that endpoint, transforms the response into a JSON Schema object, and appends it to the response under a `schema` key. The connector's `x-ms-dynamic-schema` extension then points to this operation to provide dynamic field tokens in the Power Automate flow designer.
+
+**How it fits into the connector definition:**
+
+In `apiDefinition.swagger.json`, define a "get schema" operation and a "get data" operation. Set `x-ms-dynamic-schema` on the body parameter of the data operation to reference the schema operation:
+
+```json
+"/data": {
+  "post": {
+    "operationId": "CreateDataRecord",
+    "summary": "Create a data record",
+    "description": "Creates a new record with a dynamically determined structure.",
+    "parameters": [
+      {
+        "name": "body",
+        "in": "body",
+        "required": true,
+        "schema": {
+          "type": "object",
+          "x-ms-dynamic-schema": {
+            "operationId": "GetDataSchema",
+            "parameters": {
+              "recordType": {
+                "parameter": "recordType"
+              }
+            },
+            "value-path": "schema"
+          }
+        }
+      },
+      {
+        "name": "recordType",
+        "in": "query",
+        "required": true,
+        "type": "string",
+        "x-ms-summary": "Record Type",
+        "description": "The type of record to create."
+      }
+    ]
+  }
+},
+"/schema": {
+  "get": {
+    "operationId": "GetDataSchema",
+    "summary": "Get data record schema",
+    "description": "Returns the JSON Schema for the specified record type.",
+    "x-ms-visibility": "internal",
+    "parameters": [
+      {
+        "name": "recordType",
+        "in": "query",
+        "required": true,
+        "type": "string",
+        "x-ms-summary": "Record Type",
+        "description": "The record type whose schema to retrieve."
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Schema retrieved successfully.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "x-ms-summary": "Schema",
+              "description": "The JSON Schema for the record type."
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+List `GetDataSchema` in `scriptOperations` in `apiProperties.json` to route it through the script.
+
+**script.csx implementation:**
+
+The script calls the proprietary metadata endpoint, maps the response into a standard JSON Schema, and returns it under the `schema` key.
+
+```csharp
+public class Script : ScriptBase
+{
+    public override async Task<HttpResponseMessage> ExecuteAsync()
+    {
+        switch (this.Context.OperationId)
+        {
+            case "GetDataSchema":
+                return await HandleGetDataSchema().ConfigureAwait(false);
+            default:
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = CreateJsonContent(
+                        $"Unhandled OperationId: '{this.Context.OperationId}'"
+                    )
+                };
+        }
+    }
+
+    private async Task<HttpResponseMessage> HandleGetDataSchema()
+    {
+        // Extract the recordType query parameter from the incoming request URI
+        var query = System.Web.HttpUtility.ParseQueryString(
+            this.Context.Request.RequestUri.Query
+        );
+        var recordType = query["recordType"] ?? string.Empty;
+
+        // Call the proprietary metadata endpoint on the backend
+        // (the base host is inherited from Context.Request.RequestUri)
+        var metadataUri = new UriBuilder(this.Context.Request.RequestUri)
+        {
+            Path = "/api/metadata/fields",
+            Query = $"type={Uri.EscapeDataString(recordType)}"
+        }.Uri;
+
+        var metadataRequest = new HttpRequestMessage(HttpMethod.Get, metadataUri);
+
+        // Forward existing auth headers from the original request
+        foreach (var header in this.Context.Request.Headers)
+        {
+            metadataRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        var metadataResponse = await this.Context.SendAsync(
+            metadataRequest,
+            this.CancellationToken
+        ).ConfigureAwait(false);
+
+        var metadataBody = await metadataResponse.Content
+            .ReadAsStringAsync()
+            .ConfigureAwait(false);
+
+        var metadataFields = JArray.Parse(metadataBody);
+
+        // Build a JSON Schema object from the proprietary field list
+        var properties = new JObject();
+        var required = new JArray();
+
+        foreach (var field in metadataFields)
+        {
+            var name = field["name"]?.ToString();
+            var fieldType = field["type"]?.ToString();
+            var label = field["label"]?.ToString() ?? name;
+            var isRequired = field["required"]?.Value<bool>() ?? false;
+
+            if (string.IsNullOrEmpty(name)) continue;
+
+            // Map the backend field type to a JSON Schema type
+            var jsonType = fieldType switch
+            {
+                "integer" => "integer",
+                "boolean" => "boolean",
+                "date" => "string",
+                _ => "string"
+            };
+
+            properties[name] = new JObject
+            {
+                ["type"] = jsonType,
+                ["x-ms-summary"] = label,
+                ["description"] = $"The {label} field."
+            };
+
+            if (fieldType == "date")
+            {
+                properties[name]["format"] = "date-time";
+            }
+
+            if (isRequired)
+            {
+                required.Add(name);
+            }
+        }
+
+        // Wrap in a schema object under the "schema" key
+        // x-ms-dynamic-schema's "value-path": "schema" points here
+        var schemaEnvelope = new JObject
+        {
+            ["schema"] = new JObject
+            {
+                ["type"] = "object",
+                ["properties"] = properties,
+                ["required"] = required
+            }
+        };
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = CreateJsonContent(schemaEnvelope.ToString())
+        };
+    }
+}
+```
+
+**Key points:**
+
+- The `value-path: "schema"` in `x-ms-dynamic-schema` tells Power Automate to look for the schema inside the `schema` property of the response — match this key exactly.
+- The schema returned must be a valid JSON Schema object (`type`, `properties`, `required`). Power Automate will surface each property as a dynamic content token in the flow designer.
+- Use `x-ms-summary` and `description` on each property within the schema to control how the tokens appear to the maker.
+- List only `GetDataSchema` (not the main data operation) in `scriptOperations` if the main data operation does not need script processing.
 
 ---
 
