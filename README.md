@@ -1,5 +1,7 @@
 # Microsoft Power Platform Custom Connector Skill for Claude Code
 
+> **GitHub:** [https://github.com/maxhenkentech/mspp-customconnector-skill](https://github.com/maxhenkentech/mspp-customconnector-skill)
+
 A [Claude Code](https://claude.ai/code) plugin that gives Claude deep, production-ready expertise in building and maintaining **Microsoft Power Platform custom connectors** — from a blank folder to a deployed, validated connector with dynamic UI, policy transforms, and optional C# custom code.
 
 Whether you are building your first connector or tuning a complex multi-instance OAuth connector with dynamic schemas, this skill knows the full stack.
