@@ -42,6 +42,9 @@ Ask: "Does this API have more than one environment, such as a sandbox/demo and a
 **5. Operations to implement**
 Ask: "Which API operations do you want to expose in this connector?" Let the user describe their use cases — this determines which endpoints to include and which to skip.
 
+**6. Documentation**
+Ask: "Would you like documentation generated for this connector?" If yes, generate both formats after the connector files are complete — a `README.md` (human-readable Markdown reference) and a `swagger-ui.html` (interactive Swagger UI browser). See `references/documentation.md` for the exact template and HTML.
+
 ---
 
 ## Core Authoring Workflow
@@ -63,6 +66,8 @@ Follow these steps in order when creating or updating a connector.
 7. **Deploy.** For a first deployment (no `settings.json` yet), use `paconn create` with explicit flags: `--api-def`, `--api-prop`, and optionally `--script` and `--icon`. For OAuth 2.0 connectors `--secret` is required; pass `"dummy"` if the secret is not yet known or will be user-supplied. After first deployment, add the returned connector ID to `settings.json` and use `paconn update -s settings.json` for all subsequent deploys. For detailed CLI flags and the guided interactive workflow see `references/paconn-guide.md`.
 
 8. **Offer deployment.** After the connector files are complete and validated, always ask: "Would you like me to deploy this connector now? I can run `paconn create` (new connector) or `paconn update` (existing connector) for you." Collect the environment GUID and — for OAuth 2.0 — the client secret, then run the deploy command. Save the returned connector ID into `settings.json` after first deployment.
+
+9. **Generate documentation (if requested).** If the user asked for documentation during intake, generate both files into the connector folder: `README.md` (structured Markdown reference) and `swagger-ui.html` (standalone Swagger UI). Load `references/documentation.md` for the exact template, HTML, and instructions to give the user.
 
 ---
 
@@ -286,6 +291,7 @@ Load these files on demand when the task requires their specific content. Do not
 
 | File | When to load |
 |------|-------------|
+| `references/documentation.md` | Templates and generation instructions for README.md (Markdown) and swagger-ui.html (Swagger UI) connector documentation |
 | `references/auth-patterns.md` | Authentication type selection and full JSON examples for every auth type including OAuth 2.0, API key, Basic, Windows, and multi-environment connectionParameterSets |
 | `references/paconn-guide.md` | CLI commands, deployment flags, --secret for OAuth 2.0, settings.json schema, guided paconn experience |
 | `references/policy-templates.md` | All ten policy template templateIds, parameters, and JSON examples |
